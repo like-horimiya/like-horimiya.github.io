@@ -90,7 +90,45 @@
             margin: 0;
             /* -webkit-text-stroke: 0px #0000FF;  */
         }
+.iframe-container {
+    position: relative;
+    width: 100%;
+    height: 30vh;
+    transition: all 0.3s ease;
+}
 
+.iframe-container.fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+}
+
+.iframe-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.iframe-container.fullscreen .iframe-click-overlay {
+    position: fixed !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 10000 !important;
+}
+
+.iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
         .stroke-single-bg{
             position: absolute;
             left: 0;
@@ -115,8 +153,10 @@
 
 <!-- # 注意事項 ######################### -->
 <!-- <iframe src="" name="sample" width="100%" height="30%" id="asr_frame" onclick="toggleIframeHeight()"></iframe> -->
-<iframe src="" name="sample" width="100%" height="30%" id="asr_frame" onclick="toggleIframeHeight()" style="border: none;"></iframe>
-
+<div class="iframe-container" id="iframe-container">
+    <div class="iframe-click-overlay" onclick="toggleIframeHeight()"></div>
+    <iframe src="" name="sample" width="100%" height="30%" id="asr_frame" style="border: none;"></iframe>
+</div>
 　上の画面をクリックすると設定画面が閉じ，もう一度押すと再度開きます．<BR>
 <HR>
 
@@ -3397,62 +3437,83 @@ window.addEventListener('DOMContentLoaded', function() {
 <!-- # iframeの高さを切り替える　############################ -->
 <script>
     function toggleIframeHeight() {
-        console.log("toggleIframeHeight");
-        var iframe = document.getElementById('asr_frame');
-        var body = document.body;
+    console.log("toggleIframeHeight called");
+    
+    var container = document.getElementById('iframe-container');
+    var body = document.body;
 
-        // ページのスクロール位置を一番上に戻す
-        window.scrollTo(0, 0);
-
-        if (iframe.style.height === '100%') {
-            iframe.style.height = '30%';
-            body.style.overflow = 'auto';  // ページスクロールを有効にする
-        } else {
-            iframe.style.height = '100%';
-            body.style.overflow = 'hidden';  // ページスクロールを禁止する
-        }
-
-        document.getElementById('frame_height').value = iframe.style.height;
-        updateOptionValues();
+    if (!container) {
+        console.error("iframe container not found");
+        return;
     }
+
+    window.scrollTo(0, 0);
+
+    if (container.classList.contains('fullscreen')) {
+        // 元のサイズに戻す
+        container.classList.remove('fullscreen');
+        body.style.overflow = 'auto';
+        console.log("Returned to normal size");
+    } else {
+        // フルスクリーンにする
+        container.classList.add('fullscreen');
+        body.style.overflow = 'hidden';
+        console.log("Changed to fullscreen");
+    }
+
+    // frame_height要素の値も更新
+    var frameHeightElement = document.getElementById('frame_height');
+    if (frameHeightElement) {
+        frameHeightElement.value = container.classList.contains('fullscreen') ? '100%' : '30%';
+        if (typeof updateOptionValues === 'function') {
+            updateOptionValues();
+        }
+    }
+}
 </script>
 
 <!-- iframeの高さを自動調整する -->
 <script>
     window.addEventListener('load', function() {
-        var iframe = document.getElementById('asr_frame');
-        
-        // iframeの読み込み完了を待つ
-        iframe.addEventListener('load', function() {
-            try {
-                var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                
-                iframeDoc.addEventListener('click', function() {
+    var iframe = document.getElementById('asr_frame');
+    
+    // iframeに直接クリックイベントを追加（外側から）
+    iframe.addEventListener('click', function(e) {
+        console.log('iframe clicked from outside'); // デバッグ用
+        toggleIframeHeight();
+    });
+    
+    // iframeの読み込み完了を待つ
+    iframe.addEventListener('load', function() {
+        console.log('iframe loaded'); // デバッグ用
+        try {
+            var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            // iframe内のdocumentにクリックイベントを追加
+            iframeDoc.addEventListener('click', function(e) {
+                console.log('iframe content clicked'); // デバッグ用
+                toggleIframeHeight();
+            });
+            
+            // iframe内のbodyにもイベントを追加（念のため）
+            if (iframeDoc.body) {
+                iframeDoc.body.addEventListener('click', function(e) {
+                    console.log('iframe body clicked'); // デバッグ用
                     toggleIframeHeight();
                 });
-                
-                // iframe読み込み完了後に翻訳方法を確実に送信
-                setTimeout(() => {
-                    updateTranslationMethodInIframe();
-                    console.log('iframe読み込み完了後に翻訳方法を送信');
-                    
-                    // Chrome翻訳が選択されている場合、タイマー開始を確認
-                    const chromeRadio = document.getElementById('translationMethodChrome');
-                    if (chromeRadio && chromeRadio.checked) {
-                        console.log('Chrome翻訳選択確認 - タイマー開始確認');
-                        setTimeout(() => {
-                            updateTranslationMethodInIframe('chrome');
-                        }, 1000);
-                    }
-                }, 500);
-            } catch (e) {
-                console.error('iframeへのアクセスに失敗:', e);
             }
-        });
+        } catch (e) {
+            console.error('Cannot access iframe content:', e);
+            console.log('Using fallback click handler on iframe element itself');
+        }
         
-        // ページ全体のロード完了後に設定を確実に反映
-        setTimeout(applyInitialSettings, 1000);
+        // 翻訳方法を確実に送信
+        setTimeout(() => {
+            updateTranslationMethodInIframe();
+            console.log('iframe読み込み完了後に翻訳方法を送信');
+        }, 500);
     });
+});
 </script>
 
 <!-- # プリセット初期化（最終実行） ###################### -->
