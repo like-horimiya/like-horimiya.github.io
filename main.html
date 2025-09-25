@@ -59,8 +59,6 @@
             overflow:hidden;
             font-family: 'M PLUS Rounded 1c', sans-serif;
             /* font-family:'07NikumaruFont'; */
-    background-color: #00ff00 !important;
-    background: #00ff00 !important;
         }
         table {
             width: 100%;
@@ -158,9 +156,45 @@
             return decodeURIComponent(results[2].replace(/\+/g, " "));
         }
 
+        // 一定時間変化がなかったら消す ------------------------------------
+        var fn_del = function() {
+            document.getElementById('speech_text-imb').innerHTML = '';
+            document.getElementById('speech_text-bg').innerHTML = '';
+            document.getElementById('speech_text-fg').innerHTML = '';
+            document.getElementById('trans_text-imb').innerHTML = '';
+            document.getElementById('trans_text-bg').innerHTML = '';
+            document.getElementById('trans_text-fg').innerHTML = '';
+            document.getElementById('trans_text2-imb').innerHTML = '';
+            document.getElementById('trans_text2-bg').innerHTML = '';
+            document.getElementById('trans_text2-fg').innerHTML = '';
+            document.getElementById('trans_text3-imb').innerHTML = '';
+            document.getElementById('trans_text3-bg').innerHTML = '';
+            document.getElementById('trans_text3-fg').innerHTML = '';
+
+            // 各フラグをリセット
+            isSpeechRecognitionComplete = false;
+            isTextTranslation1Complete = false;
+            isTextTranslation2Complete = false;
+            isTextTranslation3Complete = false;
+            
+            // 保持テキストもクリア
+            currentInterimText = '';
+            lastFinalText = '';
+        };
+
+
         // URLからの値読み込み(削除タイマー) -------------------
         var timer = getParam('timer');
         
+        // 一定時間認識結果がなかったら，そこで認識終了 --------------------
+        var short_pause = getParam('short_pause');
+        
+        // デバッグ用：タイマー設定を確認
+        console.log('タイマー設定:', {
+            timer: timer + 'ms (テキスト削除)',
+            short_pause: short_pause + 'ms (音声ポーズ検出)'
+        });
+
         //////////////////////////////////////////////////////////
         // URLからの値読み込み -------------------
         var arg_showAudioLevel = getParam('showAudioLevel');
@@ -611,11 +645,7 @@
                 } else {
                     stopChromeTranslationReloadTimer();
                 }
-        } else if (event.data && event.data.type === 'iframeClicked') {
-            // iframe内がクリックされた時の処理
-            toggleIframeHeight();
-        }
-                    } else if (event.data && event.data.type === 'forceStartTimer') {
+            } else if (event.data && event.data.type === 'forceStartTimer') {
                 selectedTranslationMethod = 'chrome';
                 startChromeTranslationReloadTimer();
             }
@@ -1716,6 +1746,11 @@
 <!-- ############## 末尾のjavascript ############## -->
 <script type="text/javascript">
 
+// バージョン情報の表示 ---------------------------------
+const SoftwareTitle = "";
+const SoftwareVersion = "";
+const SoftwareDeveloper = ""
+
 // Web Speech API使用時のデバイス制限について
 console.log('音声認識: Web Speech APIは既定の音声デバイスのみ使用');
 console.log('デバイスを変更する場合は、ブラウザまたはOSの設定で既定デバイスを変更してください。');
@@ -1725,7 +1760,7 @@ document.getElementById('speech_text-bg').innerHTML = speech_text_first;
 document.getElementById('speech_text-fg').innerHTML = speech_text_first;
 document.getElementById('speech_text-imb').innerHTML = speech_text_first;
 
-const trans1_text_first = "";
+const trans1_text_first = SoftwareDeveloper;
 document.getElementById('trans_text-bg').innerHTML = trans1_text_first
 document.getElementById('trans_text-fg').innerHTML = trans1_text_first
 document.getElementById('trans_text-imb').innerHTML = trans1_text_first
@@ -1760,9 +1795,9 @@ if (getParam('trans3') == null) {
 
 // 表示スタイル変更 ---------------------------------
 if (getParam('bgcolor') != null){
-    document.bgColor = "#00ff00";
+    document.bgColor = getParam('bgcolor');
 }
-document.bgColor = "#00ff00";
+
 if (getParam('v_align') == "top"){
     document.getElementById("text_table").style.bottom = -1;
 } else if(getParam('v_align') == "bottom"){
@@ -1785,6 +1820,43 @@ if (getParam('whiteSpace') != null){
 
 // 高さ合わせ用フォント（色を背景色と同じにする） ############################################
 // 音声認識テキスト -------
+if (getParam('bgcolor') != null){
+    document.getElementById("speech_text-imb").style.webkitTextStrokeColor = getParam('bgcolor');
+    document.getElementById("speech_text-imb").style.color = getParam('bgcolor');
+}
+if (getParam('st_width1') != null){
+    document.getElementById("speech_text-imb").style.webkitTextStrokeWidth = getParam('st_width1') + 'pt';
+}
+
+// 翻訳結果テキスト -------
+if (getParam('bgcolor') != null){
+    document.getElementById("trans_text-imb").style.webkitTextStrokeColor = getParam('bgcolor');
+    document.getElementById("trans_text-imb").style.color = getParam('bgcolor');
+}
+if (getParam('st_width2') != null){
+    document.getElementById("trans_text-imb").style.webkitTextStrokeWidth = getParam('st_width2') + 'pt';
+}
+
+// 翻訳結果テキスト（第2言語） -------
+if (getParam('bgcolor') != null){
+    document.getElementById("trans_text2-imb").style.webkitTextStrokeColor = getParam('bgcolor');
+    document.getElementById("trans_text2-imb").style.color = getParam('bgcolor');
+}
+if (getParam('st_width3') != null){
+    document.getElementById("trans_text2-imb").style.webkitTextStrokeWidth = getParam('st_width3') + 'pt';
+}
+
+// 翻訳結果テキスト（第3言語） -------
+if (getParam('bgcolor') != null){
+    document.getElementById("trans_text3-imb").style.webkitTextStrokeColor = getParam('bgcolor');
+    document.getElementById("trans_text3-imb").style.color = getParam('bgcolor');
+}
+if (getParam('st_width4') != null){
+    document.getElementById("trans_text3-imb").style.webkitTextStrokeWidth = getParam('st_width4') + 'pt';
+}
+
+
+
 // 表示設定 ############################################
 // 全体共通 ----------------
 
