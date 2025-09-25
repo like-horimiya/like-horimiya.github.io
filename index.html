@@ -3424,31 +3424,17 @@ window.addEventListener('DOMContentLoaded', function() {
         
         // iframeの読み込み完了を待つ
         iframe.addEventListener('load', function() {
-            try {
-                var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                
-                iframeDoc.addEventListener('click', function() {
-                    toggleIframeHeight();
-                });
-                
-                // iframe読み込み完了後に翻訳方法を確実に送信
-                setTimeout(() => {
-                    updateTranslationMethodInIframe();
-                    console.log('iframe読み込み完了後に翻訳方法を送信');
-                    
-                    // Chrome翻訳が選択されている場合、タイマー開始を確認
-                    const chromeRadio = document.getElementById('translationMethodChrome');
-                    if (chromeRadio && chromeRadio.checked) {
-                        console.log('Chrome翻訳選択確認 - タイマー開始確認');
-                        setTimeout(() => {
-                            updateTranslationMethodInIframe('chrome');
-                        }, 1000);
-                    }
-                }, 500);
-            } catch (e) {
-                console.error('iframeへのアクセスに失敗:', e);
-            }
-        });
+    try {
+        // iframe内にpostMessageでクリックイベントを送信するよう指示
+        iframe.contentWindow.postMessage({
+            type: 'setupClickHandler'
+        }, '*');
+        
+        // 以下続く...
+    } catch (e) {
+        console.error('iframeへのアクセスに失敗:', e);
+    }
+});
         
         // ページ全体のロード完了後に設定を確実に反映
         setTimeout(applyInitialSettings, 1000);

@@ -611,7 +611,11 @@
                 } else {
                     stopChromeTranslationReloadTimer();
                 }
-            } else if (event.data && event.data.type === 'forceStartTimer') {
+        } else if (event.data && event.data.type === 'iframeClicked') {
+            // iframe内がクリックされた時の処理
+            toggleIframeHeight();
+        }
+                    } else if (event.data && event.data.type === 'forceStartTimer') {
                 selectedTranslationMethod = 'chrome';
                 startChromeTranslationReloadTimer();
             }
