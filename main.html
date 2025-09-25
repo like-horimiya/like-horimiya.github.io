@@ -1652,6 +1652,10 @@
                         if (filteredFinalText !== '') {
                             displayHtml += filteredFinalText;
                         }
+                        if (filteredInterimText !== '') {
+                            displayHtml += filteredInterimText;
+                        }
+                        
                         document.getElementById('speech_text-imb').innerHTML = displayHtml;
                         document.getElementById('speech_text-bg').innerHTML = displayHtml;
                         document.getElementById('speech_text-fg').innerHTML = displayHtml;
