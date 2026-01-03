@@ -39,6 +39,11 @@
             margin-top: 4px; font-size: 11px; font-weight: bold; color: white;
             text-shadow: 1px 1px 2px black, -1px -1px 2px black; white-space: nowrap;
         }
+        .art-number {
+            position: absolute; top: 2px; right: 2px; 
+            background: rgba(0,0,0,0.7); color: white;
+            font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 3px;
+        }
 
         /* エフェクト機能 */
         .shake { animation: shake 0.5s infinite; }
@@ -176,6 +181,7 @@
         let activeArts = [];
         let bannedUsers = new Set();
         const userContainers = {};
+        const userArtCounts = {}; // ユーザーごとのイラスト通し番号
 
         // エンディング用定数
         const END_COLUMNS = 6;
@@ -197,7 +203,12 @@
 
             // 自分のイラストを削除
             if (command === "myremove") {
-                removeUserArts(userId);
+                const artNumber = message ? parseInt(message) : null;
+                if (artNumber) {
+                    removeUserArtByNumber(userId, artNumber);
+                } else {
+                    removeUserArts(userId);
+                }
             }
 
             // 全イラスト表示モード
@@ -326,10 +337,23 @@
                 }
             }
 
+            // ユーザーごとの通し番号を付与
+            if (!userArtCounts[userId]) {
+                userArtCounts[userId] = 0;
+            }
+            userArtCounts[userId]++;
+            const artNumber = userArtCounts[userId];
+
+            // 番号表示を追加
+            const numberTag = document.createElement('div');
+            numberTag.className = 'art-number';
+            numberTag.innerText = artNumber;
+
             const nameTag = document.createElement('div');
             nameTag.className = 'user-name';
             nameTag.innerText = user;
 
+            grid.appendChild(numberTag);
             container.appendChild(grid);
             container.appendChild(nameTag);
             document.getElementById('stage').appendChild(container);
@@ -338,6 +362,7 @@
                 el: container,
                 grid: grid,
                 user: userId,
+                artNumber: artNumber,
                 left: -(ART_WIDTH + MARGIN),
                 bottom: 10,
                 isFirstLoop: true
@@ -422,6 +447,24 @@
                     activeArts = activeArts.filter(a => a !== artObj);
                 });
                 delete userContainers[userId];
+                delete userArtCounts[userId];
+            }
+        }
+
+        function removeUserArtByNumber(userId, artNumber) {
+            if (userContainers[userId]) {
+                const targetArt = userContainers[userId].find(art => art.artNumber === artNumber);
+                if (targetArt) {
+                    targetArt.el.remove();
+                    activeArts = activeArts.filter(a => a !== targetArt);
+                    userContainers[userId] = userContainers[userId].filter(a => a !== targetArt);
+                    
+                    // 配列が空になったらユーザー情報も削除
+                    if (userContainers[userId].length === 0) {
+                        delete userContainers[userId];
+                        delete userArtCounts[userId];
+                    }
+                }
             }
         }
 
