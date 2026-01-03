@@ -206,20 +206,16 @@
                 }
             }
 
-            // 全イラスト表示モード
-            if (command === "all") {
-                startAllMode();
-            }
-
-            // スクロールモードに戻す
-            if (command === "scroll") {
-                startScrollMode();
-            }
-
             // 配信者専用
             if (flags.broadcaster) {
                 if (command === "end") {
                     startEndingMode();
+                }
+                if (command === "all") {
+                    startAllMode();
+                }
+                if (command === "scroll") {
+                    startScrollMode();
                 }
             }
 
