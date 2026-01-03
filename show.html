@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>miyaro paint</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; font-family: 'Arial', sans-serif; }
+        
+        #stage { 
+            width: 1920px; 
+            height: 1080px; 
+            position: relative; 
+            overflow: hidden; 
+        }
+        
+        .art-container { 
+            position: absolute; 
+            width: 80px; 
+            left: -150px; 
+            bottom: 10px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            will-change: left, bottom;
+        }
+
+        .pixel-grid {
+            display: grid; 
+            grid-template-columns: repeat(16, 5px); 
+            grid-template-rows: repeat(16, 5px);
+            width: 80px; height: 80px; 
+            background: transparent; 
+            border-radius: 4px; 
+            overflow: visible; 
+            position: relative;
+        }
+        .px { width: 5px; height: 5px; }
+        .user-name {
+            margin-top: 4px; font-size: 11px; font-weight: bold; color: white;
+            text-shadow: 1px 1px 2px black, -1px -1px 2px black; white-space: nowrap;
+        }
+
+        /* エフェクト機能 */
+        .shake { animation: shake 0.5s infinite; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .jump { animation: jump 0.6s infinite ease-in-out; }
+        @keyframes jump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .dance { animation: dance 0.8s infinite; }
+        @keyframes dance {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(10deg) scale(1.1); }
+            75% { transform: rotate(-10deg) scale(1.1); }
+        }
+
+        .sparkle::after {
+            content: '✨'; position: absolute; top: -10px; left: -10px; width: 100px; height: 100px;
+            display: flex; align-items: center; justify-content: center; font-size: 50px;
+            animation: sparkle-anim 1s infinite; pointer-events: none;
+        }
+        @keyframes sparkle-anim { 0%, 100% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.3); } }
+
+        .bomb { animation: bomb-anim 0.4s infinite; filter: contrast(2.5); }
+        @keyframes bomb-anim {
+            0% { transform: scale(1); filter: hue-rotate(0deg) brightness(1); }
+            50% { transform: scale(1.4); filter: hue-rotate(180deg) brightness(3); }
+            100% { transform: scale(1); filter: hue-rotate(360deg) brightness(1); }
+        }
+
+        #screenshot-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        #screenshot-btn:hover {
+            background: #45a049;
+        }
+
+        #screenshot-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        #screenshot-btn:hover {
+            background: #45a049;
+        }
+
+        /* カスタム右クリックメニュー */
+        #context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            padding: 5px 0;
+            z-index: 10000;
+            display: none;
+            min-width: 180px;
+        }
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+        }
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
+        .context-menu-item::before {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="stage"></div>
+    
+    <!-- カスタム右クリックメニュー -->
+    <div id="context-menu">
+        <div class="context-menu-item" data-action="screenshot">📸 スクリーンショット保存</div>
+        <div class="context-menu-item" data-action="reload">🔄 リロード</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
+    <script>
+        const PALETTES = {
+            "0": ['transparent','#ffffff','#888888','#222222','#ff4b2b','#33cc33','#0077ff','#ffee00','#ff99cc','#66ffff','#ccff33','#8b4513','#b22222','#000080','#ff8c00','#000000'],
+            "1": ['transparent','#fff5eb','#fde5d2','#f9d4b8','#f3b08c','#e3906c','#c07254','#91553d','#ff66a3','#ff0066','#9900ff','#442211','#55ccff','#ffffff','#222222','#000000'],
+            "2": ['transparent','#ffffff','#f8f8f8','#e0e0e0','#cccccc','#b0b0b0','#999999','#808080','#666666','#505050','#404040','#303030','#202020','#101010','#050505','#000000'],
+            "3": ['transparent','#ff6b6b','#fa5252','#f03e3e','#e03131','#c92a2a','#ffa94d','#fd7e14','#f76707','#e8590c','#d9480f','#ffffff','#ffec99','#fab005','#222222','#000000'],
+            "4": ['transparent','#339af0','#228be6','#1c7ed6','#1971c2','#1864ab','#38d9a9','#20c997','#12b886','#0ca678','#099268','#ffffff','#a5d8ff','#111111','#222222','#000000'],
+            "5": ['transparent','#f8f8f8','#bcbcbc','#7c7c7c','#f8d878','#f8a000','#f83800','#d80000','#008800','#00a800','#0058f8','#3cbcfc','#0000bc','#6844fc','#ffffff','#000000'],
+            "6": ['transparent','#ffb7b2','#ffdac1','#e2f0cb','#b5ead7','#c7ceea','#ffc6ff','#9bf6ff','#a0c4ff','#bdb2ff','#fffffc','#ffffff','#333333','#aaaaaa','#222222','#000000'],
+            "7": ['transparent','#ff0000','#cc0000','#990000','#660000','#330000','#ff8888','#ffcccc','#ffffff','#eeeeee','#cccccc','#999999','#666666','#333333','#111111','#000000'],
+            "8": ['transparent','#00ff00','#ff00ff','#00ffff','#ffff00','#ff0000','#ffffff','#003300','#330033','#003333','#330033','#330000','#444444','#888888','#222222','#000000'],
+            "9": ['transparent','#2d5a27','#1e3f1a','#4a7c44','#6b8e23','#8fbc8f','#556b2f','#a2ad91','#deb887','#8b4513','#5d4037','#ffffff','#cccccc','#444444','#222222','#000000'],
+            "a": ['transparent','#0077be','#005b96','#03396c','#011f4b','#6497b1','#b3cde0','#009688','#4db6ac','#80cbc4','#ffffff','#dddddd','#aaaaaa','#333333','#111111','#000000'],
+            "b": ['transparent','#ff4500','#ff6347','#ff8c00','#ffa500','#ffd700','#2f4f4f','#708090','#191970','#000080','#483d8b','#ffffff','#aaaaaa','#333333','#111111','#000000'],
+            "c": ['transparent','#9bbc0f','#8bab0f','#306230','#0f380f','#ffffff','#dddddd','#bbbbbb','#999999','#777777','#555555','#333333','#111111','#050505','#222222','#000000'],
+            "d": ['transparent','#a63d33','#e0815e','#6b4a3e','#f2e8d5','#bfbd97','#8c9e5e','#5e6146','#3e4a3d','#2b3a2d','#1a201a','#ffffff','#cccccc','#888888','#222222','#000000'],
+            "e": ['transparent','#5d001e','#9a1750','#ee4c7c','#ff66aa','#cc3366','#990033','#ffcccc','#ff99cc','#ffffff','#eeeeee','#cccccc','#999999','#444444','#222222','#000000'],
+            "f": ['transparent','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff','#ffffff','#808080','#800000','#008000','#000080','#808000','#800080','#444444','#000000']
+        };
+
+        let currentSpeed = 1; 
+        let endingSpeed = 1.5; 
+        let isEnding = false;
+        let isAllMode = false;
+        const ART_WIDTH = 80;
+        const MARGIN = 50; 
+        let activeArts = [];
+        let bannedUsers = new Set();
+        const userContainers = {};
+
+        // エンディング用定数
+        const END_COLUMNS = 6;
+        const END_COL_WIDTH = 140;
+        const END_ROW_HEIGHT = 150;
+
+        const params = new URLSearchParams(window.location.search);
+        const channel = params.get('channel');
+        if (channel) ComfyJS.Init(channel);
+
+        ComfyJS.onCommand = (user, command, message, flags, extra) => {
+            const userId = user.toLowerCase();
+            if (bannedUsers.has(userId)) return;
+
+            if (command === "draw" && message) { createArt(user, message); }
+            
+            const effects = ["shake", "jump", "dance", "sparkle", "bomb"];
+            if (effects.includes(command)) { applyEffect(userId, command); }
+
+            // 自分のイラストを削除
+            if (command === "myremove") {
+                removeUserArts(userId);
+            }
+
+            // 全イラスト表示モード
+            if (command === "all") {
+                startAllMode();
+            }
+
+            // スクロールモードに戻す
+            if (command === "scroll") {
+                startScrollMode();
+            }
+
+            // 配信者専用
+            if (flags.broadcaster) {
+                if (command === "end") {
+                    startEndingMode();
+                }
+            }
+
+            // モデレーター以上
+            if (flags.broadcaster || flags.mod) {
+                const target = message ? message.replace('@', '').toLowerCase() : "";
+                if (command === "picclear") {
+                    removeUserArts(target);
+                }
+                if (command === "picban") {
+                    if (target) {
+                        bannedUsers.add(target);
+                        removeUserArts(target);
+                    }
+                }
+                if (command === "speed") {
+                    const s = parseFloat(message);
+                    if (s > 0) currentSpeed = s / 10;
+                }
+            }
+        };
+
+        function startEndingMode() {
+            isEnding = true;
+            isAllMode = false;
+            activeArts.forEach((art, index) => {
+                const col = index % END_COLUMNS;
+                const row = Math.floor(index / END_COLUMNS);
+                
+                art.left = col * END_COL_WIDTH + 10; 
+                art.el.style.left = art.left + 'px';
+                
+                // 下端(480px)より外側から順番に配置
+                art.bottom = -(END_ROW_HEIGHT + (row * END_ROW_HEIGHT)); 
+                art.el.style.bottom = art.bottom + 'px';
+                
+                art.grid.classList.remove('jump');
+            });
+        }
+
+        function startAllMode() {
+            isAllMode = true;
+            isEnding = false;
+
+            if (activeArts.length === 0) return;
+
+            const artSize = 80;
+            const padding = 20;
+            const cols = Math.floor(1920 / (artSize + padding));
+
+            // 中央揃えのためのオフセット計算
+            const totalWidth = cols * (artSize + padding) - padding;
+            const startX = (1920 - totalWidth) / 2;
+            const rows = Math.ceil(activeArts.length / cols);
+            const totalHeight = rows * (artSize + padding + 20) - padding;
+            const startY = (1080 - totalHeight) / 2;
+
+            activeArts.forEach((art, index) => {
+                const col = index % cols;
+                const row = Math.floor(index / cols);
+                
+                art.left = startX + col * (artSize + padding);
+                art.bottom = startY + row * (artSize + padding + 20);
+                
+                art.el.style.left = art.left + 'px';
+                art.el.style.bottom = art.bottom + 'px';
+                art.grid.classList.remove('jump');
+            });
+        }
+
+        function startScrollMode() {
+            isAllMode = false;
+            isEnding = false;
+
+            // 全てのイラストをスクロール開始位置に再配置
+            activeArts.forEach((art, index) => {
+                art.left = -(ART_WIDTH + MARGIN) + (index * (ART_WIDTH + MARGIN));
+                art.bottom = 10;
+                art.el.style.left = art.left + 'px';
+                art.el.style.bottom = art.bottom + 'px';
+                art.grid.classList.add('jump');
+                art.isFirstLoop = true;
+            });
+        }
+
+        function createArt(user, data) {
+            const userId = user.toLowerCase();
+            const palKey = data[0].toLowerCase();
+            const colors = PALETTES[palKey] || PALETTES["0"];
+            const pixelData = data.substring(1);
+
+            const container = document.createElement('div');
+            container.className = 'art-container';
+
+            const grid = document.createElement('div');
+            grid.className = 'pixel-grid jump';
+
+            let pCount = 0;
+            for (let i = 0; i < pixelData.length; i += 2) {
+                const colorIdx = parseInt(pixelData[i], 16);
+                const repeat = parseInt(pixelData[i + 1], 16);
+                for (let r = 0; r < repeat; r++) {
+                    if (pCount < 256) {
+                        const px = document.createElement('div');
+                        px.className = 'px';
+                        px.style.backgroundColor = colors[colorIdx] || 'transparent';
+                        grid.appendChild(px);
+                        pCount++;
+                    }
+                }
+            }
+
+            const nameTag = document.createElement('div');
+            nameTag.className = 'user-name';
+            nameTag.innerText = user;
+
+            container.appendChild(grid);
+            container.appendChild(nameTag);
+            document.getElementById('stage').appendChild(container);
+
+            const artObj = {
+                el: container,
+                grid: grid,
+                user: userId,
+                left: -(ART_WIDTH + MARGIN),
+                bottom: 10,
+                isFirstLoop: true
+            };
+
+            activeArts.push(artObj);
+            if (!userContainers[userId]) userContainers[userId] = [];
+            userContainers[userId].push(artObj);
+        }
+
+        function update() {
+            if (isAllMode) {
+                // Allモード：静止表示
+                requestAnimationFrame(update);
+                return;
+            }
+            
+            if (!isEnding) {
+                // 通常モード
+                for (let i = 0; i < activeArts.length; i++) {
+                    const art = activeArts[i];
+                    let canMove = false;
+                    if (i === 0) {
+                        canMove = true;
+                    } else {
+                        const prevArt = activeArts[i-1];
+                        if (prevArt.left > art.left + ART_WIDTH + MARGIN) {
+                            canMove = true;
+                        }
+                    }
+                    if (canMove) {
+                        art.left += currentSpeed;
+                        art.el.style.left = art.left + 'px';
+                    }
+                }
+
+                if (activeArts.length > 0 && activeArts[0].left > 1920) {
+                    const finishedArt = activeArts.shift();
+                    if (finishedArt.isFirstLoop) {
+                        finishedArt.grid.classList.remove('jump');
+                        finishedArt.isFirstLoop = false;
+                    }
+                    finishedArt.left = -(ART_WIDTH + MARGIN);
+                    finishedArt.el.style.left = finishedArt.left + 'px';
+                    activeArts.push(finishedArt);
+                }
+            } else {
+                // エンディングモード（スタッフロール）
+                activeArts.forEach(art => {
+                    art.bottom += endingSpeed;
+                    art.el.style.bottom = art.bottom + 'px';
+                });
+
+                if (activeArts.length > 0) {
+                    const lastArt = activeArts[activeArts.length - 1];
+                    const screenHeight = 1080;
+                    const waitMargin = END_ROW_HEIGHT * 1;
+                    
+                    if (lastArt.bottom > screenHeight + waitMargin) {
+                        startEndingMode();
+                    }
+                }
+            }
+            requestAnimationFrame(update);
+        }
+        update();
+
+        function applyEffect(userId, effect) {
+            if (userContainers[userId]) {
+                userContainers[userId].forEach(artObj => {
+                    const grid = artObj.el.querySelector('.pixel-grid');
+                    grid.classList.add(effect);
+                    setTimeout(() => { grid.classList.remove(effect); }, 5000);
+                });
+            }
+        }
+
+        function removeUserArts(userId) {
+            if (userContainers[userId]) {
+                userContainers[userId].forEach(artObj => {
+                    artObj.el.remove();
+                    activeArts = activeArts.filter(a => a !== artObj);
+                });
+                delete userContainers[userId];
+            }
+        }
+
+        // スクリーンショット機能
+        function saveScreenshot() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1920;
+            canvas.height = 1080;
+            const ctx = canvas.getContext('2d');
+            
+            // 背景を白で塗りつぶし
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 1920, 1080);
+
+            if (activeArts.length === 0) {
+                alert('保存するイラストがありません');
+                return;
+            }
+
+            // グリッドレイアウトの計算
+            const artSize = 80;
+            const padding = 20;
+            const cols = Math.floor(1920 / (artSize + padding));
+            const rows = Math.ceil(activeArts.length / cols);
+
+            // 中央揃えのためのオフセット計算
+            const totalWidth = cols * (artSize + padding) - padding;
+            const startX = (1920 - totalWidth) / 2;
+            const totalHeight = rows * (artSize + padding + 20) - padding;
+            const startY = (1080 - totalHeight) / 2;
+
+            // 各イラストを描画
+            for (let i = 0; i < activeArts.length; i++) {
+                const art = activeArts[i];
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = startX + col * (artSize + padding);
+                const y = startY + row * (artSize + padding + 20);
+
+                // ピクセルデータを取得
+                const pixels = art.grid.querySelectorAll('.px');
+                pixels.forEach((px, idx) => {
+                    const bgColor = px.style.backgroundColor;
+                    if (bgColor && bgColor !== 'transparent') {
+                        const pxX = x + (idx % 16) * 5;
+                        const pxY = y + Math.floor(idx / 16) * 5;
+                        ctx.fillStyle = bgColor;
+                        ctx.fillRect(pxX, pxY, 5, 5);
+                    }
+                });
+
+                // ユーザー名を描画
+                ctx.fillStyle = '#333333';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(art.user, x + artSize / 2, y + artSize + 15);
+            }
+
+            // PNG保存
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `miyaro_paint_${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // 右クリックメニューの制御
+        const contextMenu = document.getElementById('context-menu');
+        
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = e.pageX + 'px';
+            contextMenu.style.top = e.pageY + 'px';
+        });
+
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+
+        document.querySelectorAll('.context-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const action = e.target.getAttribute('data-action');
+                if (action === 'screenshot') {
+                    saveScreenshot();
+                } else if (action === 'reload') {
+                    location.reload();
+                }
+                contextMenu.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
