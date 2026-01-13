@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コメントコマンド利用ガイド</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #fdfdfd; }
+        h1 { color: #2c3e50; border-bottom: 3px solid #00a0e9; padding-bottom: 10px; text-align: center; }
+        .intro { background: #e1f5fe; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #b3e5fc; }
+        h2 { color: #e67e22; border-left: 5px solid #e67e22; padding-left: 10px; margin-top: 30px; font-size: 1.25em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; width: 30%; }
+        code { background-color: #eee; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-weight: bold; color: #d63384; }
+        .example { background-color: #2d3436; color: #fff; padding: 10px; border-radius: 5px; margin: 5px 0; font-family: monospace; }
+        .note { font-size: 0.9em; color: #666; margin-top: 10px; }
+        .important { color: #c0392b; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>💬 コメント演出コマンドガイド</h1>
+    
+    <div class="intro">
+        コメントの先頭や末尾に <code>!</code> から始まるコマンドを付けることで、配信画面上のコメントの<strong>色・サイズ・位置</strong>を自由に変更できます。
+    </div>
+
+    <h2>1. 位置を指定する</h2>
+    <p>通常は右から左へ流れますが、以下のコマンドで特定の場所に固定できます。</p>
+    <table>
+        <tr><th>コマンド</th><th>位置</th></tr>
+        <tr><td><code>!ue</code></td><td>画面上部に中央揃えで固定</td></tr>
+        <tr><td><code>!sita</code></td><td>画面下部に中央揃えで固定</td></tr>
+        <tr><td><code>!migi</code></td><td>画面右側に固定</td></tr>
+        <tr><td><code>!hidari</code></td><td>画面左側に固定</td></tr>
+    </table>
+
+    <h2>2. サイズを指定する</h2>
+    <p>コメントの大きさを3段階で変更できます。</p>
+    <table>
+        <tr><th>コマンド</th><th>サイズ</th></tr>
+        <tr><td><code>!small</code></td><td>小さめ (48px)</td></tr>
+        <tr><td><code>!middle</code></td><td>標準 (72px)</td></tr>
+        <tr><td><code>!big</code></td><td>大きめ (108px)</td></tr>
+    </table>
+
+    <h2>3. 色を指定する</h2>
+    <p>文字の色を指定できます。カラーコード、または主要な色名が使えます。</p>
+    <table>
+        <tr><th>指定方法</th><th>例</th></tr>
+        <tr><td>カラーコード</td><td><code>!FF0000</code> (赤), <code>!00FF00</code> (緑)</td></tr>
+        <tr><td>色名</td><td><code>!red</code>, <code>!blue</code>, <code>!pink</code>, <code>!orange</code></td></tr>
+    </table>
+
+    <h2>📝 コメントの書き方例</h2>
+    <p>複数のコマンドを組み合わせて使うことも可能です（順不同）。</p>
+    
+    <p><strong>例1：大きな赤い文字を画面上に固定する</strong></p>
+    <div class="example">!big !red !ue 運営さんこんにちは！</div>
+    
+    <p><strong>例2：小さなピンク色の文字を流す</strong></p>
+    <div class="example">かわいい！ !small !pink</div>
+
+    <h2>⚠️ 注意事項</h2>
+    <ul>
+        <li>コマンド（<code>!xxx</code>）は画面には表示されず、自動的に消去されます。</li>
+        <li>コマンドだけのコメントは表示されません。</li>
+        <li><span class="important">!draw</span> で始まるコメントはシステム上の仕様により除外されます。</li>
+        <li>固定位置（ue/sita等）のコメントは約3秒間で自動的に消えます。</li>
+    </ul>
+
+    <hr>
+    <p style="text-align: center; color: #95a5a6; font-size: 0.8em;">Powered by MiRoDot Overlay System</p>
+
+</body>
+</html>
