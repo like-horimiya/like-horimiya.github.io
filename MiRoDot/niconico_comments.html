@@ -1,0 +1,575 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ニコニコ風コメント</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        .comment {
+            position: absolute;
+            white-space: nowrap;
+            font-size: 72px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 
+                -3px -3px 0 #000,
+                3px -3px 0 #000,
+                -3px 3px 0 #000,
+                3px 3px 0 #000,
+                0px -3px 0 #000,
+                0px 3px 0 #000,
+                -3px 0px 0 #000,
+                3px 0px 0 #000;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .comment img {
+            height: 72px;
+            width: auto;
+            vertical-align: middle;
+        }
+
+        /* small サイズ */
+        .comment.small {
+            font-size: 48px;
+        }
+
+        .comment.small img {
+            height: 48px;
+        }
+
+        /* middle サイズ (デフォルト) */
+        .comment.middle {
+            font-size: 72px;
+        }
+
+        .comment.middle img {
+            height: 72px;
+        }
+
+        /* big サイズ */
+        .comment.big {
+            font-size: 108px;
+        }
+
+        .comment.big img {
+            height: 108px;
+        }
+
+        /* 流れるコメントのアニメーション */
+        @keyframes slideComment {
+            from {
+                left: 100%;
+            }
+            to {
+                left: var(--end-position);
+            }
+        }
+
+        .comment.flowing {
+            animation: slideComment linear forwards;
+        }
+
+        /* 固定位置: ue (上) */
+        .comment.ue {
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* 固定位置: sita (下) */
+        .comment.sita {
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* 固定位置: migi (右) */
+        .comment.migi {
+            top: 50%;
+            right: 50px;
+            transform: translateY(-50%);
+        }
+
+        /* 固定位置: hidari (左) */
+        .comment.hidari {
+            top: 50%;
+            left: 50px;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // ========================================
+        // 設定セクション - ここを編集してください
+        // Configuration Section - Edit here
+        // ========================================
+        
+        // 除外するユーザー名のリスト (1行に1人)
+        // Excluded usernames list (one per line)
+        const EXCLUDED_USERS = [
+            'ai_chai_bot',
+            'Nightbot',
+            'StreamElements',
+            'Sery_Bot',
+        ];
+        
+        // ========================================
+
+        // URLパラメータを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const flowTimeParam = urlParams.get('flowtime') || urlParams.get('time');
+        const colorParam = urlParams.get('color') || urlParams.get('defaultcolor');
+        const fontParam = urlParams.get('font') || urlParams.get('fontfamily');
+        const sizeParam = urlParams.get('size') || urlParams.get('fontsize');
+
+        // フォント名をデコード（日本語フォント名に対応）
+        let decodedFont = null;
+        if (fontParam) {
+            try {
+                // URLエンコードされている場合はデコード
+                decodedFont = decodeURIComponent(fontParam);
+                console.log('フォントパラメータをデコード:', fontParam, '->', decodedFont);
+            } catch (e) {
+                // デコードに失敗した場合はそのまま使用
+                decodedFont = fontParam;
+                console.log('フォントパラメータをそのまま使用:', fontParam);
+            }
+        }
+        
+        // カラーパラメータを正規化（#を付ける）
+        let normalizedColor = '#FFFFFF'; // デフォルト
+        if (colorParam) {
+            if (colorParam.startsWith('#')) {
+                normalizedColor = colorParam;
+            } else if (/^[0-9A-Fa-f]{3}$/.test(colorParam) || /^[0-9A-Fa-f]{6}$/.test(colorParam)) {
+                normalizedColor = '#' + colorParam;
+            } else {
+                normalizedColor = colorParam; // HTML color name
+            }
+        }
+
+        // 設定
+        const CONFIG = {
+            // 除外するユーザー名のリスト - 上部のEXCLUDED_USERSを使用
+            excludedUsers: EXCLUDED_USERS,
+            
+            // コメントの高さ範囲(ピクセル)
+            minHeight: 50,
+            maxHeight: 1030, // 1080 - 50(余白)
+            
+            // コメントの行の高さ (1080pで8行 = 約120px)
+            lineHeight: 120,
+            
+            // コメントが画面を横切る時間(秒) - URLパラメータで上書き可能
+            FLOW_TIME: flowTimeParam ? parseFloat(flowTimeParam) : 5,
+            
+            // 重なり判定の余裕(秒)
+            overlapMargin: 0.5,
+            
+            // デフォルトの文字色 - URLパラメータで上書き可能
+            defaultColor: normalizedColor,
+            
+            // フォント設定
+            fontFamily: decodedFont || 'MS PGothic, Meiryo, sans-serif',
+            
+            // デフォルトの文字サイズ
+            defaultSize: sizeParam || 'middle'
+        };
+
+        console.log('設定:', {
+            FLOW_TIME: CONFIG.FLOW_TIME + '秒',
+            defaultColor: CONFIG.defaultColor,
+            fontFamily: CONFIG.fontFamily,
+            defaultSize: CONFIG.defaultSize,
+            excludedUsers: CONFIG.excludedUsers.length + '人'
+        });
+        
+        console.log('URLパラメータ確認:');
+        console.log('  元のfontパラメータ:', fontParam);
+        console.log('  デコード後:', decodedFont);
+        console.log('  適用されるフォント:', CONFIG.fontFamily);
+
+        // Googleフォントを読み込む関数（エラー時はローカルフォールバック）
+        async function loadGoogleFont(fontName) {
+            // カンマ区切りの複数フォント指定の場合はGoogleフォント読み込みをスキップ
+            if (fontName.includes(',')) {
+                console.log('複数フォント指定のため、ローカルフォントとして使用:', fontName);
+                return true; // ローカルフォントとして使用
+            }
+
+            // すでに読み込まれているかチェック
+            const existingLink = document.querySelector(`link[href*="${encodeURIComponent(fontName)}"]`);
+            if (existingLink) {
+                console.log('フォントは既に読み込まれています:', fontName);
+                return true;
+            }
+
+            // Googleフォントとして読み込みを試みる
+            console.log('Googleフォントの読み込みを試行中:', fontName);
+            
+            const fontUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@400;700&display=swap`;
+            
+            try {
+                // フォントURLにアクセスして確認
+                const response = await fetch(fontUrl, { method: 'HEAD' });
+                
+                if (response.ok) {
+                    // 成功: Googleフォントとして読み込む
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = fontUrl;
+                    document.head.appendChild(link);
+                    console.log('✓ Googleフォント読み込み成功:', fontName);
+                    return true;
+                } else {
+                    // 400エラーなど: ローカルフォントとして使用
+                    console.log('✗ Googleフォントが見つかりません (HTTP ' + response.status + ')');
+                    console.log('→ ローカルフォントとして使用します:', fontName);
+                    return true; // ローカルフォントとして続行
+                }
+            } catch (error) {
+                // ネットワークエラー: ローカルフォントとして使用
+                console.log('✗ Googleフォントの読み込みエラー:', error.message);
+                console.log('→ ローカルフォントとして使用します:', fontName);
+                return true; // ローカルフォントとして続行
+            }
+        }
+
+        // 初期化（非同期でフォント読み込み）
+        if (decodedFont) {
+            loadGoogleFont(decodedFont).then(() => {
+                console.log('フォント初期化完了');
+            });
+        }
+
+        // 現在表示中のコメントを管理
+        const activeComments = [];
+
+        // わんコメからのWebSocket接続
+        const ws = new WebSocket('ws://127.0.0.1:11180/sub');
+
+        ws.onopen = () => {
+            console.log('わんコメに接続しました');
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('受信:', data.type);
+
+                // type: 'comments' の場合にコメントを処理
+                if (data.type === 'comments') {
+                    // data.data.comments配列からコメントを取得
+                    if (data.data && data.data.comments && Array.isArray(data.data.comments)) {
+                        console.log('コメント受信:', data.data.comments.length, '件');
+                        data.data.comments.forEach(comment => {
+                            processComment(comment);
+                        });
+                    }
+                }
+                
+                // 初回接続時のコメント履歴を処理
+                if (data.type === 'connected') {
+                    if (data.data && data.data.comments && Array.isArray(data.data.comments)) {
+                        console.log('接続時のコメント履歴:', data.data.comments.length, '件');
+                        // 接続時のコメントは表示しない場合はこの部分をコメントアウト
+                        // data.data.comments.forEach(comment => {
+                        //     processComment(comment);
+                        // });
+                    }
+                }
+            } catch (error) {
+                console.error('メッセージ解析エラー:', error);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocketエラー:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('わんコメとの接続が切断されました');
+            // 再接続を試みる
+            setTimeout(() => {
+                location.reload();
+            }, 5000);
+        };
+
+        function processComment(comment) {
+            console.log('processComment開始:', comment.data?.name || 'unknown');
+            console.log('serviceData:', comment.serviceData);
+            console.log('書き出しフラグ:', comment.serviceData?.write);
+            
+            // 書き出しがfalseの場合は表示しない
+            if (comment.serviceData && comment.serviceData.write === false) {
+                console.log('書き出しOFFのため表示しない');
+                return;
+            }
+            
+            // わんコメの構造: comment.data.comment にテキストが入っている
+            let text = comment.data?.comment || '';
+            const username = comment.data?.name || comment.data?.displayName || '';
+            const emotes = comment.data?.emotes || [];
+
+            console.log('テキスト:', text, '/ ユーザー:', username);
+
+            // !drawで始まるコメントを除外
+            if (text.startsWith('!draw')) {
+                console.log('!drawコメントを除外');
+                return;
+            }
+
+            // 除外ユーザーのチェック
+            if (CONFIG.excludedUsers.includes(username)) {
+                console.log('除外ユーザーのコメント');
+                return;
+            }
+
+            // コマンドを解析
+            let color = CONFIG.defaultColor;
+            let position = null; // null, 'ue', 'sita', 'migi', 'hidari'
+            let size = CONFIG.defaultSize; // 'small', 'middle', 'big'
+            
+            // !で始まる全てのコマンドを抽出
+            const commandRegex = /!(\w+)/g;
+            let match;
+            const commands = [];
+            
+            while ((match = commandRegex.exec(text)) !== null) {
+                commands.push(match[1].toLowerCase());
+            }
+            
+            console.log('検出されたコマンド:', commands);
+            
+            // コマンドを処理
+            commands.forEach(cmd => {
+                // 位置コマンド
+                if (cmd === 'ue' || cmd === 'sita' || cmd === 'migi' || cmd === 'hidari') {
+                    position = cmd;
+                }
+                // サイズコマンド
+                else if (cmd === 'small' || cmd === 'middle' || cmd === 'big') {
+                    size = cmd;
+                }
+                // 色コマンド（位置・サイズ以外はすべて色として扱う）
+                else {
+                    const parsedColor = parseColor(cmd);
+                    color = parsedColor;
+                }
+            });
+            
+            // コマンドをテキストから削除
+            text = text.replace(/!\w+/g, '').trim();
+            
+            console.log('処理後 - 色:', color, '位置:', position, 'サイズ:', size, 'テキスト:', text);
+
+            // 空のコメントは表示しない
+            if (!text) {
+                console.log('空のテキストのため表示しない');
+                return;
+            }
+
+            console.log('コメント表示:', text);
+            // コメントを表示
+            displayComment(text, emotes, color, position, size);
+        }
+
+        function parseColor(colorValue) {
+            // #付きのカラーコード (#FF0000, #F00)
+            if (colorValue.startsWith('#')) {
+                if (/^#[0-9A-Fa-f]{6}$/.test(colorValue) || /^#[0-9A-Fa-f]{3}$/.test(colorValue)) {
+                    return colorValue;
+                }
+            }
+
+            // #なしのカラーコード (FF0000, F00)
+            if (/^[0-9A-Fa-f]{6}$/.test(colorValue)) {
+                return '#' + colorValue;
+            }
+            if (/^[0-9A-Fa-f]{3}$/.test(colorValue)) {
+                return '#' + colorValue;
+            }
+
+            // HTMLカラーコード(rgb, rgba, hsl, hsla等)
+            if (colorValue.startsWith('rgb') || colorValue.startsWith('hsl')) {
+                return colorValue;
+            }
+
+            // HTML標準カラー名をそのまま返す（ブラウザが解釈）
+            // red, blue, pink, orangeなど
+            return colorValue;
+        }
+
+        function displayComment(text, emotes = [], color = CONFIG.defaultColor, position = null, size = CONFIG.defaultSize) {
+            console.log('displayComment - text:', text);
+            
+            // コメント要素を作成
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'comment';
+            
+            // フォントを適用（スペースや特殊文字を含むフォント名は引用符で囲む）
+            const fontFamily = CONFIG.fontFamily.includes(' ') || CONFIG.fontFamily.includes(',')
+                ? CONFIG.fontFamily.split(',').map(f => `"${f.trim()}"`).join(', ')
+                : `"${CONFIG.fontFamily}"`;
+            commentDiv.style.fontFamily = fontFamily;
+            console.log('コメントに適用されたフォント:', commentDiv.style.fontFamily);
+            
+            // 色を適用
+            commentDiv.style.color = color;
+            
+            // サイズを適用
+            commentDiv.classList.add(size);
+            
+            // 位置クラスを適用
+            if (position) {
+                commentDiv.classList.add(position);
+            }
+
+            // わんコメは既にエモートをHTMLに変換しているので、HTMLとして解釈
+            if (text.includes('<img')) {
+                console.log('HTMLエモートを検出');
+                commentDiv.innerHTML = text;
+                
+                // 生成されたimg要素のサイズを調整
+                const imgs = commentDiv.querySelectorAll('img');
+                imgs.forEach(img => {
+                    if (size === 'small') {
+                        img.style.height = '48px';
+                    } else if (size === 'big') {
+                        img.style.height = '108px';
+                    } else {
+                        img.style.height = '72px';
+                    }
+                    img.style.width = 'auto';
+                    img.style.verticalAlign = 'middle';
+                });
+            } else {
+                // 通常テキストの場合
+                commentDiv.textContent = text;
+            }
+
+            document.body.appendChild(commentDiv);
+
+            // 固定位置の場合
+            if (position) {
+                // 固定位置なので3秒後に削除
+                setTimeout(() => {
+                    commentDiv.remove();
+                }, 3000);
+                return;
+            }
+
+            // 流れるコメントの処理（位置指定なしの場合）
+            // コメントの幅を取得
+            const commentWidth = commentDiv.offsetWidth;
+            const screenWidth = window.innerWidth;
+
+            // すべてのコメントが同じ時間で横切る
+            const duration = CONFIG.FLOW_TIME;
+            
+            console.log('コメント幅:', commentWidth, 'px / 流れる時間:', duration, '秒');
+
+            // 重ならない高さを取得
+            const yPosition = getAvailableHeight(duration);
+
+            // 位置を設定
+            commentDiv.style.top = yPosition + 'px';
+            
+            // CSS変数で終了位置を設定
+            commentDiv.style.setProperty('--end-position', `-${commentWidth}px`);
+            
+            // アニメーション時間を設定
+            commentDiv.style.animationDuration = `${duration}s`;
+            
+            // flowingクラスを追加してアニメーション開始
+            commentDiv.classList.add('flowing');
+
+            // アクティブなコメントに追加
+            const commentData = {
+                element: commentDiv,
+                yPosition: yPosition,
+                startTime: Date.now(),
+                duration: duration * 1000
+            };
+            activeComments.push(commentData);
+
+            // アニメーション終了後に削除
+            setTimeout(() => {
+                commentDiv.remove();
+                const index = activeComments.indexOf(commentData);
+                if (index > -1) {
+                    activeComments.splice(index, 1);
+                }
+            }, duration * 1000);
+        }
+
+        function getAvailableHeight(duration) {
+            // 利用可能な高さのリストを作成
+            const availableHeights = [];
+            const numLines = Math.floor((CONFIG.maxHeight - CONFIG.minHeight) / CONFIG.lineHeight);
+
+            for (let i = 0; i <= numLines; i++) {
+                availableHeights.push(CONFIG.minHeight + (i * CONFIG.lineHeight));
+            }
+
+            // ランダムにシャッフル
+            shuffle(availableHeights);
+
+            // 重ならない高さを探す
+            for (const height of availableHeights) {
+                if (isHeightAvailable(height, duration)) {
+                    return height;
+                }
+            }
+
+            // すべて埋まっている場合はランダムな高さを返す
+            return availableHeights[0];
+        }
+
+        function isHeightAvailable(height, newDuration) {
+            const currentTime = Date.now();
+            const lineRange = CONFIG.lineHeight;
+
+            // 同じ高さ付近のコメントをチェック
+            for (const comment of activeComments) {
+                // 高さが近い場合
+                if (Math.abs(comment.yPosition - height) < lineRange) {
+                    // コメントの残り時間を計算
+                    const elapsed = currentTime - comment.startTime;
+                    const remaining = comment.duration - elapsed;
+
+                    // 重なる可能性がある場合
+                    if (remaining > CONFIG.overlapMargin * 1000) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // ウィンドウリサイズ対応
+        window.addEventListener('resize', () => {
+            CONFIG.maxHeight = window.innerHeight - 100;
+        });
+    </script>
+</body>
+</html>
