@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS コメントオーバーレイ URL生成ツール - 利用ガイド</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
+        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #2c3e50; background: #e9ecef; padding: 10px; border-radius: 5px; margin-top: 30px; }
+        h3 { border-left: 5px solid #3498db; padding-left: 10px; margin-top: 20px; }
+        .setup-box { background-color: #fff; border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .os-section { margin-bottom: 20px; padding: 15px; border-left: 6px solid #ccc; background: white; }
+        .win { border-color: #0078d4; }
+        .mac { border-color: #000000; }
+        .linux { border-color: #f15a24; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.9em; font-weight: bold; color: white; margin-bottom: 10px; }
+        code { background-color: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #e83e8c; }
+        .cmd-block { background-color: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 5px; overflow-x: auto; margin: 10px 0; font-family: monospace; }
+        .download-links { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+        .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; transition: opacity 0.2s; }
+        .btn-web { background-color: #27ae60; }
+        .btn-dl { background-color: #34495e; }
+        .btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <h1>OBS コメントオーバーレイ URL生成ツール</h1>
+    <p>このツールは、ニコニコ風コメント表示用HTMLをOBSで利用するための設定URLを自動作成します。</p>
+
+    <h2>📥 各種ダウンロード・リンク</h2>
+    <div class="download-links">
+        <a href="https://like-horimiya.github.io/MiRoDot/" class="btn btn-web" target="_blank">公式サイト (MiRoDot)</a>
+        <a href="overlay_windows.zip" class="btn btn-dl">Windows版をDL</a>
+        <a href="overlay_mac.zip" class="btn btn-dl">macOS版をDL</a>
+        <a href="overlay_linux.zip" class="btn btn-dl">Linux版をDL</a>
+    </div>
+
+    <h2>🚀 クイックスタート</h2>
+    <div class="setup-box">
+        <p>1. お使いのOS用の実行ファイル（.bat / .sh）を起動します。</p>
+        <p>2. 設定（秒数や色）を入力し、最後に表示されるURLをコピーします。</p>
+        <p>3. OBSで <strong>[ブラウザソース]</strong> を追加し、<strong>「ローカルファイル」のチェックを外し</strong>てURLを貼り付けます。</p>
+        <p>4. サイズを <strong>1920 x 1080</strong> に設定して完了です。</p>
+    </div>
+
+    <h2>🎨 フォント名の調べ方</h2>
+    <p>ツールでフォントを指定する際、OSにインストールされている正確な名前を入力する必要があります。以下の方法で確認できます。</p>
+    
+    <div class="os-section">
+        <h3>macOS / Linux の場合</h3>
+        <p>同梱の <code>get_fonts.sh</code> を実行すると、同じフォルダに <code>font_list.txt</code> が書き出されます。</p>
+        <ol>
+            <li>ターミナルで実行権限を付与：<br><code>chmod +x get_fonts.sh</code></li>
+            <li>実行：<br><code>./get_fonts.sh</code></li>
+            <li>生成された <code>font_list.txt</code> を開き、使いたいフォント名をコピーしてURL生成ツールに貼り付けてください。</li>
+        </ol>
+
+        <h3>Windows の場合</h3>
+        <ol>
+            <li>「設定」＞「個人用設定」＞「フォント」を開きます。</li>
+            <li>使用したいフォントをクリックし、表示される「フォント名（Family Name）」を確認してください。</li>
+        </ol>
+    </div>
+
+    <h2>💻 OS別補足事項</h2>
+
+    <div class="os-section win">
+        <span class="badge" style="background-color:#0078d4;">Windows</span>
+        <p><code>OBS_Path.bat</code> を使用します。自動的にクリップボードへコピーされます。</p>
+    </div>
+
+    <div class="os-section mac">
+        <span class="badge" style="background-color:#000000;">macOS</span>
+        <p><code>OBS_Path.sh</code> を使用します。初回実行前に <code>chmod +x *.sh</code> を実行してください。</p>
+    </div>
+
+    <div class="os-section linux">
+        <span class="badge" style="background-color:#f15a24;">Linux</span>
+        <p>コピー機能を利用するために、以下をインストールしてください。</p>
+        <p><strong>Ubuntu系:</strong> <code>sudo apt install xclip wl-clipboard fontconfig</code></p>
+        <p><strong>Fedora系:</strong> <code>sudo dnf install xclip wl-clipboard fontconfig</code></p>
+    </div>
+
+    <hr>
+    <p style="text-align: center; color: #95a5a6;">&copy; 2024 OBS Comment Overlay Tool</p>
+
+</body>
+</html>
