@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch Clip Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: transparent;
+            overflow: hidden;
+        }
+        
+        #clip-container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            background: transparent;
+        }
+        
+        #clip-player {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            z-index: 1000;
+            display: none; /* デバッグ用。本番では none に */
+        }
+    </style>
+</head>
+<body>
+    <div id="clip-container">
+        <div id="clip-player"></div>
+        <div id="status">待機中...</div>
+    </div>
+
+    <!-- Twitch Embed Player API -->
+    <script src="https://player.twitch.tv/js/embed/v1.js"></script>
+
+    <script type="module">
+        // Skypack から tmi.js をインポート
+        import tmi from 'https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/+esm';
+
+        // ========================================
+        // 設定項目（ここを編集してください）
+        // ========================================
+        const CONFIG = {
+            // Twitch チャンネル名（小文字）
+            CHANNEL_NAME: 'like_horimiya',
+            
+            // クリップを取得する Twitch チャンネル ID
+            // チャンネル ID の取得方法: https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/
+            BROADCASTER_ID: '614401921',
+            
+            // Twitch Client ID（自分のアプリケーションを作成して取得）
+            // https://dev.twitch.tv/console/apps で作成
+            CLIENT_ID: 'gp762nuuoqcoxypju8c569th9wz7q5',
+            
+            // Twitch OAuth トークン（Client ID と一緒に使用）
+            // https://twitchtokengenerator.com/ で取得可能
+            ACCESS_TOKEN: 'ax1huun3qd04gu5kn6ulqvkon15cvy',
+            
+            // クリップ再生をトリガーするチャット文字列（完全一致）
+            TRIGGER_COMMAND: '!clip',
+            
+            // 注目のクリップのみを使用するか（true: 注目のみ, false: すべてのクリップ）
+            FEATURED_ONLY: false,
+            
+            // クリップの取得期間（日数）
+            CLIP_PERIOD_DAYS: 300,
+            
+            // デバッグモード（ステータス表示）
+            DEBUG_MODE: false
+        };
+
+        // ========================================
+        // グローバル変数
+        // ========================================
+        let clips = [];
+        let player = null;
+        let isPlaying = false;
+        let clipEndTimer = null;
+
+        const statusEl = document.getElementById('status');
+
+        if (CONFIG.DEBUG_MODE) {
+            statusEl.style.display = 'block';
+        }
+
+        // ========================================
+        // ステータス更新
+        // ========================================
+        function updateStatus(message) {
+            console.log(message);
+            statusEl.textContent = message;
+        }
+
+        // ========================================
+        // Twitch API: クリップ取得
+        // ========================================
+        async function fetchClips() {
+            try {
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - CONFIG.CLIP_PERIOD_DAYS);
+
+                const url = new URL('https://api.twitch.tv/helix/clips');
+                url.searchParams.append('broadcaster_id', CONFIG.BROADCASTER_ID);
+                url.searchParams.append('first', '100');
+                url.searchParams.append('started_at', startDate.toISOString());
+                url.searchParams.append('ended_at', endDate.toISOString());
+
+                if (CONFIG.FEATURED_ONLY) {
+                    url.searchParams.append('is_featured', 'true');
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Client-ID': CONFIG.CLIENT_ID,
+                        'Authorization': `Bearer ${CONFIG.ACCESS_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                clips = data.data;
+
+                updateStatus(`クリップ取得完了: ${clips.length}件`);
+                console.log('取得したクリップ:', clips);
+            } catch (error) {
+                updateStatus(`エラー: ${error.message}`);
+                console.error('クリップ取得エラー:', error);
+            }
+        }
+
+        // ========================================
+        // ランダムクリップ選択
+        // ========================================
+        function getRandomClip() {
+            if (clips.length === 0) return null;
+            const randomIndex = Math.floor(Math.random() * clips.length);
+            return clips[randomIndex];
+        }
+
+        // ========================================
+        // クリップ再生
+        // ========================================
+        function playClip(clip) {
+            if (!clip) {
+                updateStatus('再生可能なクリップがありません');
+                return;
+            }
+
+            // 既存の再生を停止
+            stopCurrentClip();
+
+            // Twitch Embed Player でクリップを再生
+            // parent パラメータは GitHub Pages のドメインを指定
+            player = new Twitch.Player('clip-player', {
+                width: 1920,
+                height: 1080,
+                video: clip.id,
+                autoplay: true,
+                muted: false,
+                parent: ['like-horimiya.github.io'],
+                controls: false,  // シークバーやコントロールを非表示
+                allowfullscreen: false  // フルスクリーンボタンを非表示
+            });
+
+            isPlaying = true;
+
+            updateStatus(`再生中: ${clip.title} (${clip.duration}秒)`);
+            console.log('再生クリップ:', clip);
+
+            // クリップ終了タイマーを設定（クリップの長さ + 2秒のバッファ）
+            const duration = Math.ceil(clip.duration) + 2;
+            clipEndTimer = setTimeout(() => {
+                stopCurrentClip();
+                updateStatus('待機中...');
+            }, duration * 1000);
+
+            // プレイヤーイベントリスナー（終了検知）
+            player.addEventListener(Twitch.Player.ENDED, () => {
+                console.log('クリップ再生終了');
+                stopCurrentClip();
+                updateStatus('待機中...');
+            });
+        }
+
+        // ========================================
+        // クリップ停止
+        // ========================================
+        function stopCurrentClip() {
+            if (clipEndTimer) {
+                clearTimeout(clipEndTimer);
+                clipEndTimer = null;
+            }
+
+            if (player) {
+                // プレイヤーを完全に削除
+                const container = document.getElementById('clip-player');
+                container.innerHTML = '';
+                player = null;
+            }
+
+            isPlaying = false;
+        }
+
+        // ========================================
+        // Twitch チャット接続
+        // ========================================
+        const client = new tmi.Client({
+            channels: [CONFIG.CHANNEL_NAME]
+        });
+
+        client.connect().catch(console.error);
+
+        client.on('message', (channel, tags, message, self) => {
+            console.log(`${tags['display-name']}: ${message}`);
+            
+            // 完全一致チェック
+            if (message.trim() === CONFIG.TRIGGER_COMMAND) {
+                console.log(`トリガー検出: ${tags.username} が "${message}" を送信`);
+                
+                const randomClip = getRandomClip();
+                if (randomClip) {
+                    playClip(randomClip);
+                } else {
+                    updateStatus('クリップが見つかりません');
+                }
+            }
+        });
+
+        client.on('connected', () => {
+            updateStatus('チャット接続完了');
+            console.log('Twitch チャットに接続しました');
+        });
+
+        client.on('disconnected', () => {
+            updateStatus('チャット切断');
+            console.log('Twitch チャットから切断されました');
+        });
+
+        // ========================================
+        // 初期化
+        // ========================================
+        async function init() {
+            updateStatus('初期化中...');
+            await fetchClips();
+            updateStatus('待機中...');
+        }
+
+        // ページ読み込み時に初期化
+        window.addEventListener('load', init);
+
+        // 定期的にクリップリストを更新（10分ごと）
+        setInterval(fetchClips, 10 * 60 * 1000);
+    </script>
+</body>
+</html>
