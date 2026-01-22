@@ -197,6 +197,10 @@
             // parent パラメータを複数指定
             const embedUrl = `https://clips.twitch.tv/embed?clip=${clipSlug}&parent=${hostname}&parent=like-horimiya.f5.si&parent=like-horimiya.github.io&autoplay=true&muted=false`;
             
+                this.frame.onload = () => {
+                    // iframe読み込み完了後にオーバーレイを隠す処理
+                    this.hideOverlays();
+                };
             console.log('Embed URL:', embedUrl);
             console.log('Hostname:', hostname);
             
