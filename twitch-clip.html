@@ -39,24 +39,6 @@
             display: block;
         }
         
-        /* iframeの上に透明なオーバーレイを配置 */
-        #clip-container::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            pointer-events: auto;
-            z-index: 9999;
-            display: none;
-        }
-        
-        #clip-container.playing::after {
-            display: block;
-        }
-        
         #status {
             position: absolute;
             top: 10px;
@@ -239,7 +221,6 @@
             
             clipFrame.src = embedUrl;
             clipFrame.classList.add('active');
-            clipContainer.classList.add('playing'); // オーバーレイを有効化
             isPlaying = true;
             
             // オーバーレイ非表示を適用
@@ -266,7 +247,6 @@
             }
 
             clipFrame.classList.remove('active');
-            clipContainer.classList.remove('playing'); // オーバーレイを無効化
             clipFrame.src = '';
             isPlaying = false;
         }
