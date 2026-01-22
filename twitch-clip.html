@@ -32,9 +32,28 @@
             height: 100%;
             border: none;
             display: none;
+            pointer-events: none; /* マウス操作を無効化 */
         }
         
         #clip-frame.active {
+            display: block;
+        }
+        
+        /* iframeの上に透明なオーバーレイを配置 */
+        #clip-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            pointer-events: auto;
+            z-index: 9999;
+            display: none;
+        }
+        
+        #clip-container.playing::after {
             display: block;
         }
         
@@ -48,7 +67,7 @@
             border-radius: 5px;
             font-family: Arial, sans-serif;
             font-size: 14px;
-            z-index: 1000;
+            z-index: 10000;
             display: none; /* デバッグ用。本番では none に */
         }
     </style>
@@ -101,6 +120,7 @@
 
         const statusEl = document.getElementById('status');
         const clipFrame = document.getElementById('clip-frame');
+        const clipContainer = document.getElementById('clip-container');
 
         if (CONFIG.DEBUG_MODE) {
             statusEl.style.display = 'block';
@@ -173,6 +193,46 @@
         }
 
         // ========================================
+        // Twitchオーバーレイを非表示にする
+        // ========================================
+        function hideOverlays() {
+            // CSS注入でTwitchプレイヤーのオーバーレイを隠す
+            const style = document.createElement('style');
+            style.textContent = `
+                /* Twitchプレイヤーのオーバーレイを隠す */
+                iframe[src*="twitch.tv"] {
+                    pointer-events: none !important;
+                }
+                
+                /* iframeの上に透明レイヤーを配置してクリックを無効化 */
+                #clip-frame::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: transparent;
+                    z-index: 9999;
+                    pointer-events: auto;
+                }
+                
+                /* 追加のオーバーレイ非表示CSS */
+                .clip-frame {
+                    filter: none !important;
+                    -webkit-filter: none !important;
+                }
+                
+                /* iframe内のTwitchコントロールを非表示 */
+                #clip-frame {
+                    pointer-events: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+            console.log('オーバーレイ非表示CSS適用');
+        }
+
+        // ========================================
         // クリップ再生（Non-Interactive IFrame方式）
         // ========================================
         function playClip(clip) {
@@ -197,16 +257,16 @@
             // parent パラメータを複数指定
             const embedUrl = `https://clips.twitch.tv/embed?clip=${clipSlug}&parent=${hostname}&parent=like-horimiya.f5.si&parent=like-horimiya.github.io&autoplay=true&muted=false`;
             
-                this.frame.onload = () => {
-                    // iframe読み込み完了後にオーバーレイを隠す処理
-                    this.hideOverlays();
-                };
             console.log('Embed URL:', embedUrl);
             console.log('Hostname:', hostname);
             
             clipFrame.src = embedUrl;
             clipFrame.classList.add('active');
+            clipContainer.classList.add('playing'); // オーバーレイを有効化
             isPlaying = true;
+            
+            // オーバーレイ非表示を適用
+            hideOverlays();
 
             updateStatus(`再生中: ${clip.title} (${clip.duration}秒)`);
             console.log('再生クリップ:', clip);
@@ -229,6 +289,7 @@
             }
 
             clipFrame.classList.remove('active');
+            clipContainer.classList.remove('playing'); // オーバーレイを無効化
             clipFrame.src = '';
             isPlaying = false;
         }
