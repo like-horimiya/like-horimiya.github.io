@@ -32,7 +32,7 @@
             height: 100%;
             border: none;
             display: none;
-            pointer-events: none; /* マウス操作を無効化 */
+            /* pointer-events は削除 - style visibility エラーの原因 */
         }
         
         #clip-frame.active {
@@ -74,7 +74,7 @@
 </head>
 <body>
     <div id="clip-container">
-        <iframe id="clip-frame" allowfullscreen></iframe>
+        <iframe id="clip-frame" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         <div id="status">待機中...</div>
     </div>
 
@@ -199,33 +199,10 @@
             // CSS注入でTwitchプレイヤーのオーバーレイを隠す
             const style = document.createElement('style');
             style.textContent = `
-                /* Twitchプレイヤーのオーバーレイを隠す */
-                iframe[src*="twitch.tv"] {
-                    pointer-events: none !important;
-                }
-                
-                /* iframeの上に透明レイヤーを配置してクリックを無効化 */
-                #clip-frame::after {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: transparent;
-                    z-index: 9999;
-                    pointer-events: auto;
-                }
-                
                 /* 追加のオーバーレイ非表示CSS */
                 .clip-frame {
                     filter: none !important;
                     -webkit-filter: none !important;
-                }
-                
-                /* iframe内のTwitchコントロールを非表示 */
-                #clip-frame {
-                    pointer-events: none !important;
                 }
             `;
             document.head.appendChild(style);
