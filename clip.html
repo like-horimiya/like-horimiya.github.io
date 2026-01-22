@@ -64,28 +64,28 @@
             CHANNEL_NAME: 'like_horimiya',
             
             // クリップを取得する Twitch チャンネル ID
-            // チャンネル ID の取得方法: https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/
             BROADCASTER_ID: '614401921',
             
-            // Twitch Client ID（自分のアプリケーションを作成して取得）
-            // https://dev.twitch.tv/console/apps で作成
+            // Twitch Client ID
             CLIENT_ID: 'gp762nuuoqcoxypju8c569th9wz7q5',
             
-            // Twitch OAuth トークン（Client ID と一緒に使用）
-            // https://twitchtokengenerator.com/ で取得可能
+            // Twitch OAuth トークン
             ACCESS_TOKEN: 'ax1huun3qd04gu5kn6ulqvkon15cvy',
             
             // クリップ再生をトリガーするチャット文字列（完全一致）
             TRIGGER_COMMAND: '!clip',
             
-            // 注目のクリップのみを使用するか（true: 注目のみ, false: すべてのクリップ）
+            // 注目のクリップのみを使用するか
             FEATURED_ONLY: false,
             
             // クリップの取得期間（日数）
             CLIP_PERIOD_DAYS: 300,
             
             // デバッグモード（ステータス表示）
-            DEBUG_MODE: false
+            DEBUG_MODE: false,
+            
+            // parent ドメイン（配置先に応じて変更）
+            PARENT_DOMAINS: ['like-horimiya.f5.si', 'f5.si', 'like-horimiya.github.io', 'localhost']
         };
 
         // ========================================
@@ -172,17 +172,18 @@
             // 既存の再生を停止
             stopCurrentClip();
 
+            console.log('Parent domains:', CONFIG.PARENT_DOMAINS);
+            
             // Twitch Embed Player でクリップを再生
-            // parent パラメータは GitHub Pages のドメインを指定
             player = new Twitch.Player('clip-player', {
                 width: 1920,
                 height: 1080,
                 video: clip.id,
                 autoplay: true,
                 muted: false,
-                parent: ['like-horimiya.github.io'],
-                controls: false,  // シークバーやコントロールを非表示
-                allowfullscreen: false  // フルスクリーンボタンを非表示
+                parent: CONFIG.PARENT_DOMAINS,  // 配列で複数ドメインを指定
+                controls: false,
+                allowfullscreen: false
             });
 
             isPlaying = true;
@@ -190,18 +191,22 @@
             updateStatus(`再生中: ${clip.title} (${clip.duration}秒)`);
             console.log('再生クリップ:', clip);
 
-            // クリップ終了タイマーを設定（クリップの長さ + 2秒のバッファ）
+            // クリップ終了タイマーを設定
             const duration = Math.ceil(clip.duration) + 2;
             clipEndTimer = setTimeout(() => {
                 stopCurrentClip();
                 updateStatus('待機中...');
             }, duration * 1000);
 
-            // プレイヤーイベントリスナー（終了検知）
+            // プレイヤーイベントリスナー
             player.addEventListener(Twitch.Player.ENDED, () => {
                 console.log('クリップ再生終了');
                 stopCurrentClip();
                 updateStatus('待機中...');
+            });
+            
+            player.addEventListener(Twitch.Player.READY, () => {
+                console.log('プレイヤー準備完了');
             });
         }
 
@@ -215,7 +220,6 @@
             }
 
             if (player) {
-                // プレイヤーを完全に削除
                 const container = document.getElementById('clip-player');
                 container.innerHTML = '';
                 player = null;
