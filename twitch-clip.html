@@ -32,7 +32,7 @@
             height: 100%;
             border: none;
             display: none;
-            /* pointer-events は削除 - style visibility エラーの原因 */
+            pointer-events: none; /* マウス操作を無効化してオーバーレイ再表示を防ぐ */
         }
         
         #clip-frame.active {
@@ -175,23 +175,6 @@
         }
 
         // ========================================
-        // Twitchオーバーレイを非表示にする
-        // ========================================
-        function hideOverlays() {
-            // CSS注入でTwitchプレイヤーのオーバーレイを隠す
-            const style = document.createElement('style');
-            style.textContent = `
-                /* 追加のオーバーレイ非表示CSS */
-                .clip-frame {
-                    filter: none !important;
-                    -webkit-filter: none !important;
-                }
-            `;
-            document.head.appendChild(style);
-            console.log('オーバーレイ非表示CSS適用');
-        }
-
-        // ========================================
         // クリップ再生（Non-Interactive IFrame方式）
         // ========================================
         function playClip(clip) {
@@ -214,7 +197,8 @@
             
             // Non-Interactive IFrame でクリップを埋め込み
             // parent パラメータを複数指定
-            const embedUrl = `https://clips.twitch.tv/embed?clip=${clipSlug}&parent=${hostname}&parent=like-horimiya.f5.si&parent=like-horimiya.github.io&autoplay=true&muted=false`;
+            // controls=false でオーバーレイを非表示
+            const embedUrl = `https://clips.twitch.tv/embed?clip=${clipSlug}&parent=${hostname}&parent=like-horimiya.f5.si&parent=like-horimiya.github.io&autoplay=true&muted=false&controls=false&allowfullscreen=false`;
             
             console.log('Embed URL:', embedUrl);
             console.log('Hostname:', hostname);
@@ -222,9 +206,6 @@
             clipFrame.src = embedUrl;
             clipFrame.classList.add('active');
             isPlaying = true;
-            
-            // オーバーレイ非表示を適用
-            hideOverlays();
 
             updateStatus(`再生中: ${clip.title} (${clip.duration}秒)`);
             console.log('再生クリップ:', clip);
