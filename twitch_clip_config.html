@@ -330,7 +330,7 @@
                 <input 
                     type="text" 
                     id="token" 
-                    placeholder="トークンをここに貼り付け (oauth:は不要です)"
+                    placeholder="トークンをここに貼り付け (oauth:は不要)"
                     oninput="updateURL()"
                 >
                 <div class="help-text">Token Generatorで生成したトークンを貼り付けてください</div>
@@ -472,16 +472,27 @@
                 <li>ソース → 追加 (+) → ブラウザ</li>
                 <li>名前を入力（例: "Twitch Clip Player"）</li>
                 <li>URLをペースト</li>
-                <li>幅: 640、高さ: 360 等、16:9になるように設定</li>
+                <li>幅: 1920、高さ: 1080 に設定</li>
+                <li><strong>「ページと対話」のチェックを外す</strong> ⭐重要</li>
+                <li><strong>「ページがロードされたときにブラウザを更新」にチェック</strong></li>
                 <li>OK をクリック</li>
             </ol>
+
+            <div class="error-box" style="margin-top: 15px;">
+                ✅ <strong>Twitchオーバーレイ対策済み！</strong><br>
+                このツールで生成されるURLには、以下の対策が含まれています：<br><br>
+                1. <strong>controls=falseパラメータ</strong>でシークバーやコントロールを非表示<br>
+                2. <strong>pointer-events: none</strong>でマウス操作を無効化<br>
+                3. <strong>「ページと対話」をOFF</strong>でさらに安定<br><br>
+                これらの対策により、オーバーレイは**ほぼ完全に非表示**になります！
+            </div>
 
             <div class="info-box" style="margin-top: 15px;">
                 💡 チャットで設定したトリガーコマンド（デフォルト: !clip）を送信すると、ランダムなクリップが再生されます
             </div>
 
             <div class="info-box" style="margin-top: 10px;">
-                📌 <strong>ベースURL:</strong> https://like-horimiya.github.io/twitch-clip.html<br>
+                📌 <strong>ベースURL:</strong> https://like-horimiya.github.io/twitch-clip-player.html<br>
                 このURLに自動的にパラメータが追加されます
             </div>
         </div>
@@ -552,7 +563,7 @@
         // URLを更新
         function updateURL() {
             // ベースURLは固定
-            const baseUrl = 'https://like-horimiya.github.io/twitch-clip.html';
+            const baseUrl = 'https://like-horimiya.github.io/twitch-clip-player.html';
             
             const channel = document.getElementById('channel').value.trim().toLowerCase();
             const broadcasterId = document.getElementById('broadcaster_id').value.trim();

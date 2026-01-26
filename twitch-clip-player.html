@@ -32,6 +32,7 @@
             height: 100%;
             border: none;
             display: none;
+            pointer-events: none; /* マウス操作を無効化してオーバーレイ再表示を防ぐ */
         }
         
         #clip-frame.active {
@@ -246,21 +247,6 @@
         }
 
         // ========================================
-        // Twitchオーバーレイを非表示にする
-        // ========================================
-        function hideOverlays() {
-            const style = document.createElement('style');
-            style.textContent = `
-                .clip-frame {
-                    filter: none !important;
-                    -webkit-filter: none !important;
-                }
-            `;
-            document.head.appendChild(style);
-            console.log('オーバーレイ非表示CSS適用');
-        }
-
-        // ========================================
         // クリップ再生
         // ========================================
         function playClip(clip) {
@@ -278,7 +264,7 @@
             }
 
             const hostname = window.location.hostname || 'localhost';
-            const embedUrl = `https://clips.twitch.tv/embed?clip=${clipSlug}&parent=${hostname}&autoplay=true&muted=false`;
+            const embedUrl = `https://clips.twitch.tv/embed?clip=${clipSlug}&parent=${hostname}&autoplay=true&muted=false&controls=false&allowfullscreen=false`;
             
             console.log('Embed URL:', embedUrl);
             console.log('Hostname:', hostname);
@@ -286,8 +272,6 @@
             clipFrame.src = embedUrl;
             clipFrame.classList.add('active');
             isPlaying = true;
-            
-            hideOverlays();
 
             updateStatus(`再生中: ${clip.title} (${clip.duration}秒)`);
             console.log('再生クリップ:', clip);
