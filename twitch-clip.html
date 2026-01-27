@@ -327,8 +327,18 @@
                     
                     // チャンネル名が指定されている場合
                     if (targetChannel) {
+                        // モデレーター以上の権限チェック
+                        const isBroadcaster = tags.badges && tags.badges.broadcaster === '1';
+                        const isModerator = tags.mod || isBroadcaster;
+                        
+                        if (!isModerator) {
+                            updateStatus('動的チャンネル指定はモデレーター以上のみ使用可能です');
+                            console.log(`権限不足: ${tags.username} はモデレーターではありません`);
+                            return;
+                        }
+                        
                         updateStatus(`${targetChannel} のクリップを取得中...`);
-                        console.log(`指定チャンネル: ${targetChannel}`);
+                        console.log(`指定チャンネル: ${targetChannel} (by ${tags.username})`);
                         
                         // Broadcaster IDを取得
                         const broadcasterId = await getBroadcasterId(targetChannel);

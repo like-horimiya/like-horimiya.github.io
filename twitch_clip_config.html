@@ -472,7 +472,7 @@
                 <li>ソース → 追加 (+) → ブラウザ</li>
                 <li>名前を入力（例: "Twitch Clip Player"）</li>
                 <li>URLをペースト</li>
-                <li>幅: 640、高さ: 360 等、16:9になるように設定</li>
+                <li>幅640、高さ360等、<strong>16:9になるように</strong>設定</li>
                 <li><strong>「ページと対話」のチェックを外す</strong> ⭐重要</li>
                 <li><strong>「ページがロードされたときにブラウザを更新」にチェック</strong></li>
                 <li>OK をクリック</li>
@@ -488,12 +488,81 @@
             </div>
 
             <div class="info-box" style="margin-top: 15px;">
-                💡 チャットで設定したトリガーコマンド（デフォルト: !clip）を送信すると、ランダムなクリップが再生されます
+                💡 <strong>チャットコマンド</strong><br><br>
+                • <strong>!clip</strong> - デフォルトチャンネルのクリップを再生（シャッフル再生）<br>
+                → 誰でも使用可能<br><br>
+                
+                <strong>🎯 動的チャンネル指定（モデレーター以上のみ）：</strong><br>
+                • <strong>!clip ai_chai</strong> - ai_chaiチャンネルのクリップをランダム再生<br>
+                • <strong>!clip shroud</strong> - shroudチャンネルのクリップをランダム再生<br>
+                • <strong>!clip 任意のチャンネル名</strong> - そのチャンネルのクリップを再生<br><br>
+                ⚠️ この機能は配信者本人またはモデレーターのみが使用できます<br>
+                
+                視聴者が好きなチャンネルのクリップを楽しめます!
             </div>
 
             <div class="info-box" style="margin-top: 10px;">
                 📌 <strong>ベースURL:</strong> https://like-horimiya.github.io/twitch-clip-player.html<br>
                 このURLに自動的にパラメータが追加されます
+            </div>
+        </div>
+
+        <!-- 動的チャンネル指定機能 -->
+        <div class="section">
+            <div class="section-title">
+                🎯 動的チャンネル指定機能
+            </div>
+
+            <div class="info-box">
+                <strong>📖 使い方</strong><br><br>
+                
+                <strong>1. デフォルトチャンネルのクリップを再生：</strong><br>
+                チャットで <strong>!clip</strong> と入力<br>
+                → 設定したチャンネルのクリップをシャッフル再生（重複なし）<br><br>
+                
+                <strong>2. 指定チャンネルのクリップを再生：</strong><br>
+                チャットで <strong>!clip チャンネル名</strong> と入力<br><br>
+                
+                例：<br>
+                • <strong>!clip ai_chai</strong> → ai_chaiのクリップをランダム再生<br>
+                • <strong>!clip shroud</strong> → shroudのクリップをランダム再生<br>
+                • <strong>!clip xqc</strong> → xqcのクリップをランダム再生<br><br>
+            </div>
+
+            <div class="error-box" style="margin-top: 15px;">
+                ⚠️ <strong>権限制限について</strong><br><br>
+                動的チャンネル指定機能（!clip チャンネル名）は、<strong>モデレーター以上の権限を持つユーザーのみ</strong>が使用できます。<br><br>
+                <strong>使用可能：</strong><br>
+                • 配信者本人（ブロードキャスター）<br>
+                • モデレーター<br><br>
+                <strong>使用不可：</strong><br>
+                • 一般視聴者<br>
+                • VIP（モデレーター権限がない場合）<br>
+            </div>
+
+            <div class="info-box" style="margin-top: 15px;">
+                <strong>💡 動作の違い</strong><br><br>
+                
+                <strong>!clip（デフォルト）：</strong><br>
+                • 起動時に全クリップを取得済み<br>
+                • シャッフル再生（全クリップを1回ずつ再生）<br>
+                • 全て再生したら自動で再シャッフル<br>
+                • 即座に再生開始<br><br>
+                
+                <strong>!clip チャンネル名：</strong><br>
+                • コマンド実行時にAPIで取得<br>
+                • 完全ランダム選択<br>
+                • 最大100件のクリップから選択<br>
+                • 1-2秒の取得時間<br>
+            </div>
+
+            <div class="success-box" style="margin-top: 15px;">
+                <strong>✨ 実用例</strong><br><br>
+                
+                • コラボ配信で相手のチャンネルのクリップを紹介<br>
+                • 視聴者のリクエストに応える<br>
+                • 面白いクリッパーのクリップを共有<br>
+                • 人気配信者のクリップを配信中に流す<br>
             </div>
         </div>
     </div>
@@ -646,5 +715,4 @@
         });
     </script>
 </body>
-
 </html>
