@@ -111,6 +111,115 @@
         }
 
         // ========================================
+        // チャンネル名からBroadcaster IDを取得
+        // ========================================
+        async function getBroadcasterId(channelName) {
+            if (!CONFIG.ACCESS_TOKEN) {
+                console.error('アクセストークンが必要です');
+                return null;
+            }
+
+            try {
+                const url = new URL('https://api.twitch.tv/helix/users');
+                url.searchParams.append('login', channelName.toLowerCase());
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Client-ID': CLIENT_ID,
+                        'Authorization': `Bearer ${CONFIG.ACCESS_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.data && data.data.length > 0) {
+                    return data.data[0].id;
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Broadcaster ID取得エラー:', error);
+                return null;
+            }
+        }
+
+        // ========================================
+        // 指定チャンネルのクリップを取得
+        // ========================================
+        async function fetchClipsForChannel(broadcasterId) {
+            if (!CONFIG.ACCESS_TOKEN) {
+                console.error('アクセストークンが必要です');
+                return [];
+            }
+
+            try {
+                updateStatus('クリップ取得中...');
+                let channelClips = [];
+                let cursor = null;
+                let totalFetched = 0;
+
+                // ページネーションで全クリップを取得
+                do {
+                    const url = new URL('https://api.twitch.tv/helix/clips');
+                    url.searchParams.append('broadcaster_id', broadcasterId);
+                    url.searchParams.append('first', '100');
+
+                    // CLIP_PERIOD_DAYSがnullでない場合のみ日付範囲を指定
+                    if (CONFIG.CLIP_PERIOD_DAYS !== null) {
+                        const endDate = new Date();
+                        const startDate = new Date();
+                        startDate.setDate(startDate.getDate() - CONFIG.CLIP_PERIOD_DAYS);
+
+                        url.searchParams.append('started_at', startDate.toISOString());
+                        url.searchParams.append('ended_at', endDate.toISOString());
+                    }
+
+                    if (CONFIG.FEATURED_ONLY) {
+                        url.searchParams.append('is_featured', 'true');
+                    }
+
+                    // 2ページ目以降はカーソルを指定
+                    if (cursor) {
+                        url.searchParams.append('after', cursor);
+                    }
+
+                    const response = await fetch(url, {
+                        headers: {
+                            'Client-ID': CLIENT_ID,
+                            'Authorization': `Bearer ${CONFIG.ACCESS_TOKEN}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    // クリップを配列に追加
+                    if (data.data && data.data.length > 0) {
+                        channelClips.push(...data.data);
+                        totalFetched += data.data.length;
+                    }
+
+                    // 次のページのカーソルを取得
+                    cursor = data.pagination && data.pagination.cursor ? data.pagination.cursor : null;
+
+                } while (cursor && totalFetched < 100); // 最大100件まで
+
+                console.log(`クリップ取得完了: ${channelClips.length}件`);
+                return channelClips;
+            } catch (error) {
+                console.error('クリップ取得エラー:', error);
+                return [];
+            }
+        }
+
+        // ========================================
         // Twitch API: クリップ取得（全件取得）
         // ========================================
         async function fetchClips() {
@@ -313,17 +422,62 @@
 
             client.connect().catch(console.error);
 
-            client.on('message', (channel, tags, message, self) => {
+            client.on('message', async (channel, tags, message, self) => {
                 console.log(`${tags['display-name']}: ${message}`);
                 
-                if (message.trim() === CONFIG.TRIGGER_COMMAND) {
-                    console.log(`トリガー検出: ${tags.username} が "${message}" を送信`);
+                const trimmedMessage = message.trim();
+                
+                // コマンドパターン: "!clip" または "!clip チャンネル名"
+                if (trimmedMessage.startsWith(CONFIG.TRIGGER_COMMAND)) {
+                    const parts = trimmedMessage.split(/\s+/);
+                    const command = parts[0];
+                    const targetChannel = parts[1]; // チャンネル名（オプション）
                     
-                    const nextClip = getNextClip();
-                    if (nextClip) {
-                        playClip(nextClip);
-                    } else {
-                        updateStatus('クリップが見つかりません');
+                    if (command === CONFIG.TRIGGER_COMMAND) {
+                        console.log(`トリガー検出: ${tags.username} が "${message}" を送信`);
+                        
+                        // チャンネル名が指定されている場合
+                        if (targetChannel) {
+                            updateStatus(`${targetChannel} のクリップを取得中...`);
+                            console.log(`指定チャンネル: ${targetChannel}`);
+                            
+                            // Broadcaster IDを取得
+                            const broadcasterId = await getBroadcasterId(targetChannel);
+                            
+                            if (!broadcasterId) {
+                                updateStatus(`チャンネル "${targetChannel}" が見つかりません`);
+                                console.error(`チャンネルが見つかりません: ${targetChannel}`);
+                                return;
+                            }
+                            
+                            console.log(`Broadcaster ID: ${broadcasterId}`);
+                            
+                            // 指定チャンネルのクリップを取得
+                            const channelClips = await fetchClipsForChannel(broadcasterId);
+                            
+                            if (channelClips.length === 0) {
+                                updateStatus(`${targetChannel} のクリップが見つかりません`);
+                                console.log(`クリップが見つかりません: ${targetChannel}`);
+                                return;
+                            }
+                            
+                            console.log(`${targetChannel} のクリップ取得完了: ${channelClips.length}件`);
+                            
+                            // ランダムでクリップを選択
+                            const randomIndex = Math.floor(Math.random() * channelClips.length);
+                            const randomClip = channelClips[randomIndex];
+                            
+                            playClip(randomClip);
+                        } 
+                        // チャンネル名が指定されていない場合（デフォルト：シャッフル再生）
+                        else {
+                            const nextClip = getNextClip();
+                            if (nextClip) {
+                                playClip(nextClip);
+                            } else {
+                                updateStatus('クリップが見つかりません');
+                            }
+                        }
                     }
                 }
             });
